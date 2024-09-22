@@ -1,0 +1,131 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function App() {
+  const [jsonInput, setJsonInput] = useState('');
+  const [response, setResponse] = useState(null);
+  const [error, setError] = useState('');
+  const [selectedFilters, setSelectedFilters] = useState([]);
+
+  const handleSubmit = async () => {
+    try {
+      const parsedJson = JSON.parse(jsonInput);
+      const result = await axios.post('https://your-backend-api-url/bfhl', parsedJson);
+      setResponse(result.data);
+      setError('');
+    } catch (err) {
+      setError('Invalid JSON input');
+    }
+  };
+
+  const handleFilterChange = (e) => {
+    const value = Array.from(e.target.selectedOptions, option => option.value);
+    setSelectedFilters(value);
+  };
+
+  const renderResponse = () => {
+    if (!response) return null;
+
+    const filteredResponse = {};
+    if (selectedFilters.includes('numbers')) {
+      filteredResponse.numbers = response.numbers;
+    }
+    if (selectedFilters.includes('alphabets')) {
+      filteredResponse.alphabets = response.alphabets;
+    }
+    if (selectedFilters.includes('highest_lowercase_alphabet')) {
+      filteredResponse.highest_lowercase_alphabet = response.highest_lowercase_alphabet;
+    }
+
+    return (
+      <div>
+        <h3>Filtered Response:</h3>
+        <pre>{JSON.stringify(filteredResponse, null, 2)}</pre>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <h1>BFHL Challenge</h1>
+      <textarea value={jsonInput} onChange={(e) => setJsonInput(e.target.value)} />
+      <button onClick={handleSubmit}>Submit</button>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      <label>
+        Select Filters:
+        <select multiple={true} onChange={handleFilterChange}>
+          <option value="numbers">Numbers</option>
+          <option value="alphabets">Alphabets</option>
+          <option value="highest_lowercase_alphabet">Highest Lowercase Alphabet</option>
+        </select>
+      </label>
+
+      {renderResponse()}
+    </div>
+  );
+}
+
+export default App;
+
+
+
+
+
+
+
+
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const base64Img = require('base64-img');
+
+const app = express();
+app.use(bodyParser.json());
+
+// POST method for /bfhl
+app.post('/bfhl', (req, res) => {
+    const { data, file_b64 } = req.body;
+
+    const numbers = data.filter(item => !isNaN(item));
+    const alphabets = data.filter(item => isNaN(item));
+    const lowercaseAlphabets = alphabets.filter(char => char >= 'a' && char <= 'z');
+    const highestLowercaseAlphabet = lowercaseAlphabets.length ? [Math.max(...lowercaseAlphabets)] : [];
+
+    let fileValid = false;
+    let mimeType = '';
+    let fileSizeKB = 0;
+
+    if (file_b64) {
+        try {
+            const fileInfo = base64Img.imgSync(file_b64, './uploads', 'file');
+            fileValid = true;
+            mimeType = fileInfo.mimeType;
+            fileSizeKB = fileInfo.size / 1024;
+        } catch (e) {
+            fileValid = false;
+        }
+    }
+
+    res.json({
+        is_success: true,
+        user_id: "john_doe_17091999",
+        email: "john@xyz.com",
+        roll_number: "ABCD123",
+        numbers,
+        alphabets,
+        highest_lowercase_alphabet: highestLowercaseAlphabet,
+        file_valid: fileValid,
+        file_mime_type: mimeType,
+        file_size_kb: fileSizeKB
+    });
+});
+
+// GET method for /bfhl
+app.get('/bfhl', (req, res) => {
+    res.json({ operation_code: 1 });
+});
+
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+});
